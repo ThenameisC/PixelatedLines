@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelatedLines</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #drawing-board {
+            border: 1px solid #000;
+        }
+        #controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="drawing-board" width="800" height="600"></canvas>
+    <div id="controls">
+        <input type="color" id="color-picker" value="#ff0000">
+    </div>
+    <script>
+        const canvas = document.getElementById('drawing-board');
+        const ctx = canvas.getContext('2d');
+        const colorPicker = document.getElementById('color-picker');
+
+        let drawing = false;
+        let currentColor = colorPicker.value;
+
+        const socket = new WebSocket('wss://your-project-name.glitch.me');
+
+        // Function to start drawing
+        function startDrawing(event) {
+            drawing = true;
+            draw(event);
+        }
+
+        // Function to stop drawing
+        function stopDrawing() {
+            drawing = false;
+            ctx.beginPath();
+        }
+
+        // Function to draw on canvas
+        function draw(event) {
+            if (!drawing) return;
+
+            const x = event.clientX - canvas.offsetLeft;
+            const y = event.clientY - canvas.offsetTop;
+
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = currentColor;
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+
+            // Send drawing data to server
+            const drawingData = {
+                x: x,
+                y: y,
+                color: currentColor
+            };
+            socket.send(JSON.stringify(drawingData));
+        }
+
+        // Event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mousemove', draw);
+
+        colorPicker.addEventListener('input', (event) => {
+            currentColor = event.target.value;
+        });
+
+        // Handle incoming drawing data from server
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = data.color;
+
+            ctx.lineTo(data.x, data.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(data.x, data.y);
+        };
+    </script>
+</body>
+</html>
